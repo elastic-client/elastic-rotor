@@ -31,22 +31,36 @@ lazy_static! {
 
 fn main() {
 	//Build a client
-	let builder = ClientBuilder::new(&QUEUE)
-		.connect_localhost();
-
-	let cli = builder.build().wait().unwrap();
-
-	//Run a post request asynchronously
-	cli.req(Request::post("/testindex/testtype/1", b"{\"id\":1}"))
+	let cli = ClientBuilder::new(&QUEUE)
+		.connect_localhost()
+		.build()
 		.wait()
-		.unwrap()
 		.unwrap();
 
-	//Run some search requests asynchronously
-	let total_reqs = 100;
-	let search_reqs: Vec<ResponseFuture> = (0..total_reqs).map(|_| {
-		cli.req(Request::get("/testindex/testtype/_search"))
-	}).collect();
+	cli.req(Request::post("/testindex/testtype/1", b"{\"id\":1}"))
+	   .and_then(|result| {
+	   		match result {
+	   			Ok(data) => print_res(data),
+	   			Err(e) => println!("Error: {}", e)
+	   		}
 
-	futures::collect(search_reqs).wait().unwrap();
+	   		futures::collect((0..5).map(|_| {
+				cli.req(Request::get("/testindex/testtype/_search"))
+				   .and_then(|result| {
+						match result {
+							Ok(data) => print_res(data),
+							Err(e) => println!("Error: {}", e)
+						}
+
+						futures::finished(())
+				   })
+			}))
+	   })
+	   .wait()
+	   .unwrap();
+}
+
+fn print_res(res: Vec<u8>) {
+	let res = ::std::str::from_utf8(&res).unwrap();
+	println!("{}", res);
 }

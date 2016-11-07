@@ -7,6 +7,7 @@ mod req;
 
 pub use self::client::*;
 
+// TODO: This should be an `elastic_requests` type.
 /// A request message.
 /// 
 /// This is what you supply to kick off a request.

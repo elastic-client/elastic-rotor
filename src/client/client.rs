@@ -83,6 +83,9 @@ impl ClientBuilder {
 		let addrs = self.addrs;
 		let mut client = self.client;
 
+		// TODO: Instead of adding machines here, add them to the context
+		// Then add a single MasterMachine
+		// This MasterMachine will spawn ConnectionMachines from the context
 		thread::spawn(move || {
 			let creator = Loop::new(&Config::new()).unwrap();
 			let mut pool = creator.instantiate(Context);

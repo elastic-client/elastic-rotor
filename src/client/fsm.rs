@@ -15,12 +15,20 @@ This way, when a connection needs to be respawned, we don't have to try and chan
 So it'll be more like the sniffed pool, just without an external source of truth
 This means the only notifier the Handler has is one to the wakeup machine.
 It also opens the door for only waking up machines that aren't currently busy or for doing other match logic
-In that case though, we'd need to put connection machines on separate queues
+In that case though, we'd need to put connection machines on separate queues.
+Or use a work stealing queue.
+It would be neat to look at using a message hash to route to a particular machine that in turn is connected to a
+particular Elasticsearch node.
 */
 
 #[doc(hidden)]
 pub struct Context;
 
+// TODO: Add an Fsm that joins MasterMachine and ConnectionMachine
+
+// TODO: Add a MasterMachine
+
+// TODO: This becomes ConnectionMachine
 /// A state machine for managing a persistent connection to an Elasticsearch node.
 pub struct Fsm<'a, C> {
 	q: &'a Queue,
@@ -32,6 +40,8 @@ impl <'a, C> RotorClient for Fsm<'a, C> {
 	type Seed = &'a Queue;
 
 	fn create(seed: Self::Seed, _scope: &mut Scope<<Self::Requester as Requester>::Context>) -> Self {
+		// Context should contain instructions for machines to build
+		// Wakeup machine makes sure they match that state with Spawn responses
 		Fsm {
 			q: seed,
 			_c: PhantomData
@@ -62,6 +72,6 @@ impl <'a, C> RotorClient for Fsm<'a, C> {
 
 	fn connection_error(self, _err: &ProtocolError, _scope: &mut Scope<C>) {
 		//TODO: On connection error, we need to do something... The handler needs to know things have changed
-		unimplemented!()
+		panic!("unimplemented: connection error")
 	}
 }

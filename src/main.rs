@@ -30,34 +30,41 @@ lazy_static! {
 }
 
 fn main() {
-	//Build a client
-	let cli = ClientBuilder::new(&QUEUE)
+	// Build a client
+	let builder = ClientBuilder::new(&QUEUE)
 		.connect_localhost()
-		.build()
-		.wait()
-		.unwrap();
+		.connect_localhost()
+		.build();
 
-	cli.req(Request::post("/testindex/testtype/1", b"{\"id\":1}"))
-	   .and_then(|result| {
-	   		match result {
-	   			Ok(data) => print_res(data),
-	   			Err(e) => println!("Error: {}", e)
-	   		}
+	// Index some data
+	let post = builder.and_then(|cli| {
+			cli.req(Request::post("/testindex/testtype/1", b"{\"id\":1}"))
+			   .and_then(|result| {
+			   		match result {
+			   			Ok(data) => print_res(data),
+			   			Err(e) => println!("Error: {}", e)
+			   		}
 
-	   		futures::collect((0..5).map(|_| {
-				cli.req(Request::get("/testindex/testtype/_search"))
-				   .and_then(|result| {
-						match result {
-							Ok(data) => print_res(data),
-							Err(e) => println!("Error: {}", e)
-						}
+			   		futures::finished(cli)
+			   })
+			});
 
-						futures::finished(())
-				   })
-			}))
-	   })
-	   .wait()
-	   .unwrap();
+	// Search some data
+	let search = post.and_then(|cli| {
+		futures::collect((0..5).map(move |_| {
+			cli.req(Request::get("/testindex/testtype/_search"))
+			   .and_then(|result| {
+					match result {
+						Ok(data) => print_res(data),
+						Err(e) => println!("Error: {}", e)
+					}
+
+					futures::finished(())
+			   })
+		}))
+	});
+
+	search.wait().unwrap();
 }
 
 fn print_res(res: Vec<u8>) {
